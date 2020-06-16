@@ -1,0 +1,26 @@
+{
+  "name": "startercode",
+  "version": "1.0.0",
+  "description": "",
+  "main": "ftd.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "babel": "^6.23.0",
+    "body-parser": "^1.19.0",
+    "cookie-parser": "^1.4.5",
+    "crypto": "^1.0.1",
+    "express": "^4.17.1",
+    "http": "0.0.1-security",
+    "jsonwebtoken": "^8.5.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "sqlite3": "^4.1.1",
+    "url": "^0.11.0",
+    "websocket": "^1.0.31",
+    "ws": "^7.2.3"
+  }
+}

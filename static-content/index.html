@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta HTTP-EQUIV="EXPIRES" CONTENT="-1">
+		<script src="lib/jquery-3.3.1.min.js"></script>
+		<script src="lib/react.js"></script>
+		<script src="lib/react-dom.js"></script>
+		<script src="lib/babel.min.js"></script>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+		<script language="javascript" src="clientModel.js" > </script>
+		<script language="javascript" src="controller.js" > </script>
+		<link rel="stylesheet" href="style.css" type="text/css"> 
+
+		<title>f0rt9it32d</title>
+		<script type="text/babel">
+			var current_user;
+			var token;
+			var email;
+
+			class StartPage extends React.Component {
+				constructor(props) {
+					super(props);
+					this.state = {isLoggedIn : false , game: false, displayScore: false};
+					this.loginButtonHandler = this.loginButtonHandler.bind(this);
+					this.profileUpdate = this.profileUpdate.bind(this);
+					this.play = this.play.bind(this);
+					this.logoutHandler = this.logoutHandler.bind(this);
+					// this.ScorePageHandler = this.ScorePageHandler.bind(this);
+					// this.backProfile = this.backProfile.bind(this);
+					this.deleteHandler = this.deleteHandler.bind(this);
+				}
+				loginButtonHandler(e){
+					e.preventDefault();
+					var user = $("#loginUsername").val().trim();
+					var password = $("#loginPassword").val();
+					if(user != "" && password != "") {
+						$.ajax({
+							type: "POST",
+							url: "/api/login/"+user+"/",
+							data: { password: password },
+							dataType: "json"
+						}).then(data =>{
+							if("error" in data){ 
+								$("#login_msg").html("Database error, TRY AGAIN");
+							} else if ("fail" in data) { // (username,password) miss match
+								$("#login_msg").html("Invalid Username or Password.");
+							} else {
+								console.log(user + " Login sucessful");
+								current_user = user;
+								token = data["token"]; // Store token when logged in
+								this.setState({isLoggedIn: true});
+							}
+						});
+					}else{
+						$("#login_msg").html("Username and Password cannot be empty.");
+					}
+				}
+				ScorePageHandler(e) {
+					e.preventDefault();
+					$.ajax({
+						method: "GET",
+						url: "/api/scores/"
+					}).then(data =>{
+						var scores = "";
+						const regex = /"/gi; // Remove any trailling quatation mark
+						for(var i=0;i<data["scores"].length;i++){
+							var current = i + 1;
+							scores += "<tr><td>" + current + "</td><td>" + data["scores"][i].username.replace(regex, "") + "</td><td>" + data["scores"][i].score + "</td></tr>";
+						}
+						var num = (data["scores"].length)+1;
+						current = num;
+						for (var j=num;j<=10;j++){ // fill the left score cell with empty.
+							scores += "<tr><td>" + current + "</td><td> </td><td> </td></tr>";
+							current = j + 1;
+						}
+						console.log("retreive scores");
+						$("#profile_topScores").html(scores);
+						this.setState({displayScore: true});
+					});
+				}
+				profileUpdate(e) {
+					e.preventDefault();
+					var new_password = $("#updatePassword").val();
+					var new_email = $("#updateEmail").val();
+
+					if(new_password != "" || new_email != "") {
+						$.ajax({
+							type: "PUT",
+							url: "/api/updateinfo/",
+							data: { user: current_user, password: new_password, email: new_email, token: token},
+							dataType: "json"
+						}).then(data =>{
+							if("error" in data){ 
+								console.log(data["error"]);
+								$("#profile_msg").html("Fail to update. Please try again.");
+							}else {
+								if (new_email != ""){
+									email = new_email;
+								}
+								$("#profile_msg").html("Information Updated.");
+							}
+						});
+					}else{
+						$("#profile_msg").html("Nothing is modified");
+					}
+				}
+				deleteHandler(e){
+					e.preventDefault();
+					$.ajax({
+						method: "DELETE",
+						url: "/api/delete/" + current_user + '/',
+						dataType: "json",
+						data: {token: token}
+					}).then(data => {
+						if("error" in data){
+							console.log(data["error"]);
+						}
+						else if ("fail" in data) {
+							console.log(JSON.stringify(data));
+							$("#profile_msg").html("Your account is not deleted.");
+						}
+						else{
+							console.log(JSON.stringify(data));
+							this.setState({isLoggedIn: false, game: false, displayScore:false});
+							$("#login_msg").html("Your account is deleted.");
+						}
+					});
+				}	
+				play(){
+					console.log("click play");
+					this.setState({game: true});
+				}
+				logoutHandler(){
+					console.log("logged out");
+					this.setState({isLoggedIn: false});
+				}
+				// backProfile(){
+				// 	this.setState({isLoggedIn: false, game: false});
+				// 	console.log("Back to Profile page");
+				// }
+				render() {
+					let current_state;
+					if (this.state.game && this.state.isLoggedIn){
+						current_state = <GamePage />;
+						console.log("display Game page");
+					}
+					else if (this.state.isLoggedIn) { // login state is true
+						current_state = <ProfileForm profileUpdate={this.profileUpdate} deleteHandler = {this.deleteHandler} play={this.play} logoutHandler = {this.logoutHandler}/>;
+					} else {
+						current_state = <LoginPage loginButtonHandler={this.loginButtonHandler}/>;
+					}
+					return (
+						<div>
+							{current_state}
+						</div>
+					);
+				}
+			}
+			class RegisterForm extends React.Component {
+				constructor(props) {
+					super(props);
+				}
+				render() {
+					return (
+						<div>
+						<div class='bold-line'></div>
+							<div class='container'>
+							<div class='window'>
+								<div class='overlay'></div>
+								<div class='content'>
+								<div class='welcome'>REGISTER</div>
+								<form>
+								<div class='input-fields'>
+									<input type='text' id="registerUsername" placeholder='Username' class='input-line full-width'/>
+									<input type='password' id="registerPassword" placeholder='Password' class='input-line full-width'/>
+									<input id="registerEmail" type="email" placeholder="email address" class='input-line full-width'/>
+								</div>
+								<button class='ghost-round full-width' onClick={this.props.registerButtonHandler}>Register</button>
+								<div id="register_msg"></div>
+								<p className="message">Already registerd <a href="#" onClick={this.props.pageChanger}>Login</a></p>
+								</form>
+							</div>
+							</div>
+						</div>	
+						</div>
+					);
+				}
+			}
+			class LoginForm extends React.Component {
+				constructor(props) {
+					super(props);
+				}
+				render() {
+					return (
+						<div>
+						<div class='bold-line'></div>
+							<div class='container'>
+							<div class='window'>
+								<div class='overlay'></div>
+								<div class='content'>
+								<div class='welcome'>LOGIN</div>
+								<form>
+								<div class='input-fields'>
+									<input type='text' id="loginUsername" placeholder='Username' class='input-line full-width'></input>
+									<input type='password' id="loginPassword" placeholder='Password' class='input-line full-width'></input>
+								</div>
+								<button class='ghost-round full-width'onClick={this.props.loginButtonHandler}>Login</button>
+								<div class="label" id="login_msg"></div>
+								<p className="message">No account yet? <a href="#" onClick={this.props.pageChanger}>Register</a></p>
+								</form>
+							</div>
+							</div>
+						</div>	
+						</div>
+					);
+				}
+			}
+			
+			class ProfileForm extends React.Component{
+				constructor(props){
+					super(props);
+				}
+				render(){
+					return (
+						<div>
+						<div class='bold-line'></div>
+							<div class='container'>
+							<div class='window'>
+								<div class='overlay'></div>
+								<div class='content'>
+								<div class='welcome'>PROFILE</div>
+								<form>
+								<div class='input-fields'>
+									<label class="label">Change Password</label>
+									<input type='password' id="updatePassword" placeholder="New Password" class='input-line full-width'/>
+									<label class="label">Change Email</label>
+									<input type='text' id="updateEmail" placeholder='New Email' class='input-line full-width'/>
+								</div>
+								<button class='ghost-round full-width' onClick={this.props.profileUpdate}>Update</button>
+								<button class='ghost-round full-width'onClick= {this.props.play}>Play Game</button>
+								<div id="profile_msg"></div>
+								<p><a href="#" onClick= {this.props.logoutHandler}>Logout</a></p>
+								<p><a href="#" onClick= {this.props.deleteHandler}>Delete Account</a></p>
+								</form>
+							</div>
+							</div>
+						</div>	
+						</div>
+					);
+				}
+			}
+			class MyMessage extends React.Component {
+				constructor(props) {
+				super(props);
+				}
+				render(props){
+				return (
+						<span> {this.props.message} </span>
+					);
+				}
+			}
+			class GamePage extends React.Component {
+				constructor(props) {
+					super(props);
+				}
+				render(){
+					return (
+						<canvas id="theCanvas" width="1200" height="600" />
+					);
+				}
+				componentDidMount() {
+					setupGame();
+				}
+			}
+
+			class LoginPage extends React.Component {
+				constructor(props){
+					super(props);
+					this.state = {page: "login"};
+					this.pageChanger = this.pageChanger.bind(this);
+					this.registerButtonHandler = this.registerButtonHandler.bind(this);
+				}
+				pageChanger(e){
+					this.setState((prevState) => {
+						if (prevState.page === "login") { // From LOGIN page, go to register form
+							return {page : "register"};
+						} else if (prevState.page === "register"){ // From REGISTER page, go to login page
+							return {page : "login"};
+						} else if (e === "profile"){ // From PROFILE page, go to login page
+							return {page : "login"};
+							current_user = "";
+							token = "";
+							email = "";
+						}
+					});
+				}
+				registerButtonHandler(e) {
+					e.preventDefault();
+					if ($("#registerUsername").val().trim() == "" || $("#registerPassword").val().trim() == "" ){
+						$("#register_msg").html("Username and Password are required.");
+					}
+					else{
+						var username = $("#registerUsername").val().trim();
+						var password = $("#registerPassword").val().trim();
+						var new_email = $("#registerEmail").val();
+						$.ajax({
+							method: "POST",
+							url: "/api/register/"+username + "/",
+							dataType: "json",
+							data: { password: password, email: new_email }
+						}).then(data =>{
+							if("error" in data){
+								$("#register_msg").html("[DATABASE ERROR] - please try again");
+								console.log(data["error"]);
+							}
+							else if ("fail" in data){ // this means user was already in DB
+								$("#register_msg").html("Username is already taken.");
+							}
+							else{
+								email = new_email;
+								this.setState({page: "login"}) // return to the login page once registered
+							}
+						});
+					}
+				}
+				render(){
+					let current_page = this.state.page;
+					let form;
+					if (current_page === "login"){
+						form = <LoginForm loginButtonHandler={this.props.loginButtonHandler} pageChanger={this.pageChanger}/>;
+					}
+					else if (current_page === "register"){
+						form = <RegisterForm registerButtonHandler={this.registerButtonHandler} pageChanger={this.pageChanger}/>;
+					}
+					return (
+			    		<div>{form}</div>
+					);
+				}
+			}
+			ReactDOM.render(<StartPage/>, document.getElementById("start_page"));
+		</script>
+	</head>
+	<body>
+		<div id="start_page"></div>
+	</body>
+</html>
